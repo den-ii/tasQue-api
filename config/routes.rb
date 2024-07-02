@@ -3,8 +3,13 @@ Rails.application.routes.draw do
 
   namespace :api do 
     namespace :v1 do
-      resources :auth, only: %i[index create]
-      post "/auth/check_user", to: "auth#check_user"
+      resources :auth, only: %i[index create] do
+        collection do
+          post :check_user
+          post :check_otp
+          post :sign_in
+        end
+      end
     end
   end
 

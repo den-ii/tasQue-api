@@ -4,7 +4,7 @@ class CreateUsers < ActiveRecord::Migration[7.1]
       t.string :firstname
       t.string :surname
       t.string :phone_no
-      t.string :country_code, limit: 3
+      t.string :country_code, limit: 4
       t.string :country
       t.string :state
       t.string :city
