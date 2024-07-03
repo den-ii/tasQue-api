@@ -15,16 +15,18 @@ class Api::V1::AuthController < ApplicationController
       if @user.save
         render json: {data: "user created", status: :created}
       else
-        render json: {data: @user.errors, status: :unprocessable_entity}
+        render json: {data: "something went wrong", errors: @user.errors, status: :unprocessable_entity}
       end
     else
       render json: {data: "otp not verified", status: :unprocessable_entity}
     end
   end
 
+  # protect with jwt 
   def sign_in
     @user = find_user  
     if @user
+      # generate jwt
       render json: {data: @user.as_json(except: [:id, :created_at, :updated_at]), status: :ok}
     else
       render json: {data: "user not found", status: :not_found}
@@ -53,10 +55,14 @@ class Api::V1::AuthController < ApplicationController
 
   def check_otp
     if params[:otp] == "43125"
-      @otp = Otp.find(params[:phone_no])
+      @otp = Otp.where(phone_no: params[:phone_no]).order(created_at: :desc).first
       @otp.update(verified: true)
-      @otp.save
-      render json: {data: "otp verified", status: :ok}
+      if @otp.save
+        # send otp jwt
+        render json: {data: "otp verified", status: :ok}
+      else 
+        render json: {data: "something went wrong", errors: @otp.errors, status: :unprocessable_entity}
+      end
     else
       render json: {data: "otp not verified", status: :unprocessable_entity}
     end

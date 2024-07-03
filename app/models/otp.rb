@@ -1,3 +1,3 @@
 class Otp < ApplicationRecord
-  self.primary_key = 'phone_no'
+  validates :phone_no, uniqueness: true
 end
