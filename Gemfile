@@ -3,9 +3,12 @@ source "https://rubygems.org"
 
 ruby "3.3.1"
 
-gem 'dotenv-rails', :groups => [:development, :test]
+gem "dotenv-rails", :groups => [:development, :test]
 
 gem "rack-cors"
+
+gem "jwt"
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.1.3", ">= 7.1.3.4"
 

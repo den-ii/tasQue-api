@@ -1,3 +1,3 @@
 class Otp < ApplicationRecord
-  validates :phone_no, uniqueness: true
+  validates :phone_no
 end
