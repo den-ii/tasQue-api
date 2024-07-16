@@ -1,6 +1,6 @@
 class Api::V1::AuthController < ApplicationController
-  before_action :find_user, only: %i[check_user check]
-  before_action :retrieve_secrets, only: %i[check_otp]
+  before_action :find_user, only: %i[check_user]
+  before_action :retrieve_secrets, only: %i[verify_otp]
   before_action :authenticate_signin, only: %i[sign_in]
   before_action :authenticate_signup, only: %i[create]
  
@@ -39,16 +39,24 @@ class Api::V1::AuthController < ApplicationController
     
   end
 
-  def check
-    if @user
-      render json: {data: "user already exists", status: false }, status: :conflict
-      return true
-    end
-    false
+  def generate_otp
+      # MVP -> use bycrypt to hash random otp, then save to db
+    Otp.create(phone_no: params[:phone_no])
+    render json: {data: "otp generated", status: true}, status: :ok
+    
   end
 
-  def check_otp
-    if params[:otp] == "43125"
+  # def check
+  #   if @user
+  #     render json: {data: "user already exists", status: false }, status: :conflict
+  #     return true
+  #   end
+  #   false
+  # end
+
+
+  def verify_otp
+    if params[:otp] == "431256"
       @otp = Otp.where(phone_no: params[:phone_no]).order(created_at: :desc).first
       return render json: {data: "user not found", status: false}, status: :not_found if !@otp
       @otp.update(verified: true)
@@ -56,9 +64,13 @@ class Api::V1::AuthController < ApplicationController
         # send otp jwt
         payload = {data: {phone_no: params[:phone_no], message: "otp verified"}}
         token = JWT.encode payload, @secret, @encryption
-        render json: {data: {token: token, message: "otp verified"}, status: true}, status: :ok
+        if @user
+         render json: {data: {token: token, message: "otp verified", state: "login"}, status: true}, status: :ok
+        else
+         render json: {data: {token: token, message: "otp verified", state: "signup"}, status: true}, status: :ok
+        end
       else 
-        render json: {data: "something went wrong", errors: @otp.errors, status: false }, status: :unprocessable_entity
+        render json: {data: "otp not verified", status: false}, status: :unprocessable_entity
       end
     else
       render json: {data: "otp not verified", status: false}, status: :unprocessable_entity
@@ -113,6 +125,7 @@ class Api::V1::AuthController < ApplicationController
   def retrieve_secrets
     @secret = ENV["OTP_JWT_SECRET"]      
     @encryption = ENV["JWT_ENCRYPTION"]
+    find_user
   end
 
   def generate_signin_jwt(payload)

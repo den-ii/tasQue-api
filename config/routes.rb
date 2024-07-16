@@ -6,7 +6,8 @@ Rails.application.routes.draw do
       resources :auth, only: %i[index create] do
         collection do
           post :check_user
-          post :check_otp
+          post :verify_otp
+          post :generate_otp
           post :sign_in
         end
       end
