@@ -9,6 +9,7 @@ Rails.application.routes.draw do
           post :verify_otp
           post :generate_otp
           post :sign_in
+          post :modify_location
         end
       end
     end

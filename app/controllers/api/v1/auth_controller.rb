@@ -3,6 +3,7 @@ class Api::V1::AuthController < ApplicationController
   before_action :retrieve_secrets, only: %i[verify_otp]
   before_action :authenticate_signin, only: %i[sign_in]
   before_action :authenticate_signup, only: %i[create]
+  before_action :authenticate_jwt, only: %i[modify_location]
  
 
   def index
@@ -11,17 +12,15 @@ class Api::V1::AuthController < ApplicationController
 
   def create
     if @current_user
-        token = generate_signin_jwt(@current_user)
+        token = generate_signin_jwt(@current_user.to_json)
         render json: {data: {token: token, message: "otp verified"}, status: true}, status: :created
-    else
-      render json: {data: "something went wrong", errors: @user.errors, status: false}, status: :unprocessable_entity
     end
   end
 
   # protected with jwt 
   def sign_in
     if @current_user
-      token = generate_signin_jwt(@current_user)
+      token = generate_signin_jwt(@current_user.to_json)
       render json: {data: {token: token, message: "otp verified"}, status: true}, status: :ok
     else
       render json: {data: "user not found", status: false}, status: :not_found
@@ -42,17 +41,24 @@ class Api::V1::AuthController < ApplicationController
   def generate_otp
       # MVP -> use bycrypt to hash random otp, then save to db
     Otp.create(phone_no: params[:phone_no])
-    render json: {data: "otp generated", status: true}, status: :ok
-    
+    render json: {data: "otp generated", status: true}, status: :ok  
   end
 
-  # def check
-  #   if @user
-  #     render json: {data: "user already exists", status: false }, status: :conflict
-  #     return true
-  #   end
-  #   false
-  # end
+  def modify_location
+    p "api: #{params[:location]}"
+    return if !@current_user 
+    response = HTTParty.get('http://api.positionstack.com/v1/reverse', 
+    query: { 
+        access_key: ENV['POSITION_STACK_API_KEY'], 
+        query: params[:location], 
+        output: 'json'
+    })
+    data = JSON.parse(response.body)["data"][0]
+    country = data["country"]
+    city = data["region"]
+    @current_user.update(country: country, city: city)    
+    return {data: "location updated", status: true}
+  end
 
 
   def verify_otp
@@ -84,7 +90,11 @@ class Api::V1::AuthController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:firstname, :surname, :phone_no, :country_code, :country, :state)
+    params.require(:user).permit(:firstname, :surname, :phone_no,)
+  end
+
+  def create_user_params
+     params.permit(:firstname, :surname, :phone_no, :avatar, :dob)
   end
 
   def authenticate_otp(action)
@@ -100,11 +110,35 @@ class Api::V1::AuthController < ApplicationController
           @current_user = User.find_by(phone_no: token["phone_no"])
           p "@current_user: #{@current_user}"
         elsif action == "sign_up"
+         p "phone_no : #{token["phone_no"]}"
          user = User.find_by(phone_no: token["phone_no"])
+         p "user found: #{user}"
          return render json: {data: "user exists", status: false}, status: :conflict if user
-         @current_user = User.new(user_params)
-         return render json: {data: 'something went wrong', status: false}, status: :unprocessable_entity unless @current_user.save
+         p "user_params: #{create_user_params}"
+         params = create_user_params.merge(phone_no: token["phone_no"])
+         @current_user = User.new(params)
+         return render json: {data: 'something went wrong', status: false}, status: :unprocessable_entity  unless @current_user.save
         end
+        render json: {data: 'unauthorized', status: false}, status: :unauthorized unless @current_user
+      rescue JWT::DecodeError
+        render json: { data: 'invalid token', status: false }, status: :unauthorized
+      end
+    else
+      render json: { data: 'Unauthorized', status: false }, status: :unauthorized
+    end
+  end
+
+  def authenticate_jwt
+    auth_header = request.headers['Authorization']
+    if auth_header.present? && auth_header =~ /^Bearer /
+      payload = auth_header.split(' ').last
+      p "payload: #{payload}"
+      begin
+        retrieve_secrets
+        data = JSON.parse(JWT.decode(payload, @secret, true, { :algorithm => @encryption }).first)
+        p "@current_user: #{data["phone_no"]}"
+        @current_user = User.find_by(phone_no: data["phone_no"])
+        
         render json: {data: 'unauthorized', status: false}, status: :unauthorized unless @current_user
       rescue JWT::DecodeError
         render json: { data: 'invalid token', status: false }, status: :unauthorized
@@ -125,7 +159,6 @@ class Api::V1::AuthController < ApplicationController
   def retrieve_secrets
     @secret = ENV["OTP_JWT_SECRET"]      
     @encryption = ENV["JWT_ENCRYPTION"]
-    find_user
   end
 
   def generate_signin_jwt(payload)
