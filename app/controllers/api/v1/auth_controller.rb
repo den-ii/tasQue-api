@@ -57,7 +57,7 @@ class Api::V1::AuthController < ApplicationController
     country = data["country"]
     city = data["region"]
     @current_user.update(country: country, city: city)    
-    return {data: "location updated", status: true}
+    return render json: {data: "location updated", status: true}
   end
 
 
@@ -101,23 +101,19 @@ class Api::V1::AuthController < ApplicationController
     auth_header = request.headers['Authorization']
     if auth_header.present? && auth_header =~ /^Bearer /
       payload = auth_header.split(' ').last
-      p "payload: #{payload}"
       begin
         retrieve_secrets
         data = JWT.decode(payload, @secret, true, { :algorithm => @encryption }).first
         token = data["data"]
         if action == "sign_in"
           @current_user = User.find_by(phone_no: token["phone_no"])
-          p "@current_user: #{@current_user}"
         elsif action == "sign_up"
-         p "phone_no : #{token["phone_no"]}"
          user = User.find_by(phone_no: token["phone_no"])
-         p "user found: #{user}"
          return render json: {data: "user exists", status: false}, status: :conflict if user
-         p "user_params: #{create_user_params}"
-         params = create_user_params.merge(phone_no: token["phone_no"])
-         @current_user = User.new(params)
-         return render json: {data: 'something went wrong', status: false}, status: :unprocessable_entity  unless @current_user.save
+
+         p "user_params: #{params}"
+         @current_user = User.new(firstname: params[:firstname], surname: params[:surname], phone_no: token["phone_no"], dob: params[:dob])
+         return render json: {data: 'something went wrong', status: false}, status: :unprocessable_entity unless @current_user.save
         end
         render json: {data: 'unauthorized', status: false}, status: :unauthorized unless @current_user
       rescue JWT::DecodeError
@@ -132,13 +128,13 @@ class Api::V1::AuthController < ApplicationController
     auth_header = request.headers['Authorization']
     if auth_header.present? && auth_header =~ /^Bearer /
       payload = auth_header.split(' ').last
-      p "payload: #{payload}"
       begin
         retrieve_secrets
-        data = JSON.parse(JWT.decode(payload, @secret, true, { :algorithm => @encryption }).first)
-        p "@current_user: #{data["phone_no"]}"
+        data = JWT.decode(payload, @secret, true, { :algorithm => @encryption }).first
+        data = data["data"]
+        p("data: #{data["phone_no"]}")
         @current_user = User.find_by(phone_no: data["phone_no"])
-        
+        p @current_user.firstname
         render json: {data: 'unauthorized', status: false}, status: :unauthorized unless @current_user
       rescue JWT::DecodeError
         render json: { data: 'invalid token', status: false }, status: :unauthorized
