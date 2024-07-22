@@ -67,6 +67,7 @@ class Api::V1::AuthController < ApplicationController
       return render json: {data: "user not found", status: false}, status: :not_found if !@otp
       @otp.update(verified: true)
       if @otp.save
+        find_user
         # send otp jwt
         payload = {data: {phone_no: params[:phone_no], message: "otp verified"}}
         token = JWT.encode payload, @secret, @encryption
