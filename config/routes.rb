@@ -12,6 +12,7 @@ Rails.application.routes.draw do
           post :modify_location
         end
       end
+      resources :errands, only: %i[create destroy]
     end
   end
 

@@ -1,5 +1,9 @@
-class ErrandsController < ApplicationController
+class Api::V1::ErrandsController < ApplicationController
+  before_action :authenticate_jwt, only: %i[create destroy]
+
   def create
+    p "errands params: #{errand_params}"
+    p "current user: #{@current_user}"
     return if !@current_user
     errand = Errand.new(errand_params.merge(user_id: @current_user.id))
 
