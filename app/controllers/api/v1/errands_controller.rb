@@ -1,5 +1,5 @@
 class Api::V1::ErrandsController < ApplicationController
-  before_action :authenticate_jwt, only: %i[create destroy]
+  before_action :authenticate_jwt, only: %i[create index destroy]
 
   def create
     p "errands params: #{errand_params}"
@@ -12,6 +12,11 @@ class Api::V1::ErrandsController < ApplicationController
     else
       render json: { data: errand.errors, status: false }, status: :unprocessable_entity
     end
+  end
+
+  def index
+    errands = Errand.find_by(starting_point: @current_user.city)
+    render json: { data: errands.to_json, status: true }, status: :ok
   end
 
   def destroy
