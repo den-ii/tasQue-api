@@ -1,8 +1,6 @@
 class ApplicationController < ActionController::API
   def authenticate_jwt
-    p "starting authentication"
     auth_header = request.headers['Authorization']
-    p "headers: #{auth_header}"
     if auth_header.present? && auth_header =~ /^Bearer /
       payload = auth_header.split(' ').last
       begin
@@ -11,7 +9,6 @@ class ApplicationController < ActionController::API
         p "res, #{res}"
         data = res["data"]
         data ||= res
-        p "data: #{data["phone_no"]}"
         @current_user = User.find_by(phone_no: data["phone_no"])
         p @current_user.firstname
         render json: {data: 'unauthorized', status: false}, status: :unauthorized unless @current_user

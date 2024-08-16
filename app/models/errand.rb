@@ -9,6 +9,6 @@ class Errand < ApplicationRecord
   private
   
   def format_errand
-    self.starting_point = starting_point.captialize
+    self.starting_point = starting_point.capitalize
   end
 end

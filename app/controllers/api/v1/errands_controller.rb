@@ -2,8 +2,6 @@ class Api::V1::ErrandsController < ApplicationController
   before_action :authenticate_jwt, only: %i[create index destroy]
 
   def create
-    p "errands params: #{errand_params}"
-    p "current user: #{@current_user}"
     return if !@current_user
     errand = Errand.new(errand_params.merge(user_id: @current_user.id))
 
@@ -15,7 +13,10 @@ class Api::V1::ErrandsController < ApplicationController
   end
 
   def index
-    errands = Errand.find_by(starting_point: @current_user.city)
+    p "-----------------------------------"
+    p "current user: #{@current_user.city}"
+    errands = Errand.where(starting_point: @current_user.city)
+    p "errans: #{errands}"
     render json: { data: errands.to_json, status: true }, status: :ok
   end
 
